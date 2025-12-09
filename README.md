@@ -22,16 +22,13 @@ pnpm add github:nguyenvanduocit/copilot-sdk
 
 ## Setup
 
-Before using the SDK, authenticate with GitHub:
+Authenticate with GitHub (one-time):
 
 ```bash
-# Clone and run auth script
-git clone https://github.com/nguyenvanduocit/copilot-sdk.git
-cd copilot-sdk
-bun auth.ts
+bunx copilot-auth
 ```
 
-This saves credentials to `~/.copilot-sdk/auth.json`.
+This opens browser for GitHub device flow and saves credentials to `~/.copilot-sdk/auth.json`.
 
 ## Usage
 
