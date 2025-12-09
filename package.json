@@ -1,0 +1,44 @@
+{
+  "name": "copilot-sdk",
+  "version": "0.0.0",
+  "description": "TypeScript SDK for directly calling GitHub Copilot API",
+  "type": "module",
+  "main": "index.ts",
+  "types": "index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nicepkg/copilot-sdk.git"
+  },
+  "homepage": "https://github.com/nicepkg/copilot-sdk#readme",
+  "bugs": {
+    "url": "https://github.com/nicepkg/copilot-sdk/issues"
+  },
+  "license": "MIT",
+  "author": "nicepkg",
+  "keywords": [
+    "github",
+    "copilot",
+    "api",
+    "sdk",
+    "ai",
+    "openai",
+    "gpt",
+    "claude",
+    "typescript"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  },
+  "files": [
+    "*.ts",
+    "!auth.ts",
+    "!example.ts"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
