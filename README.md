@@ -25,7 +25,7 @@ pnpm add github:nguyenvanduocit/copilot-sdk
 Authenticate with GitHub (one-time):
 
 ```bash
-bunx copilot-auth
+bunx github:nguyenvanduocit/copilot-sdk
 ```
 
 This opens browser for GitHub device flow and saves credentials to `~/.copilot-sdk/auth.json`.
