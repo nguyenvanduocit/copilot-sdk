@@ -48,6 +48,31 @@ const response = await client.chat({
 console.log(response.choices[0].message.content);
 ```
 
+### Multi-turn Conversation
+
+```typescript
+import { type Message } from "copilot-sdk";
+
+const history: Message[] = [];
+
+async function chat(userMessage: string) {
+  history.push({ role: "user", content: userMessage });
+
+  const response = await client.chat({
+    model: "gpt-4o",
+    systemPrompt: "You are a helpful assistant.",
+    messages: history,
+  });
+
+  const reply = response.choices[0].message.content ?? "";
+  history.push({ role: "assistant", content: reply });
+  return reply;
+}
+
+await chat("What is 2 + 2?");      // "4"
+await chat("Multiply that by 10"); // "40"
+```
+
 ### Streaming
 
 ```typescript
