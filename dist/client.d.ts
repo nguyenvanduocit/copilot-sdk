@@ -3,7 +3,7 @@ export declare class CopilotClient {
     private config;
     private authData?;
     private modelsCache?;
-    constructor(config?: CopilotConfig);
+    constructor(config: CopilotConfig);
     /**
      * Initialize the client - loads auth from file
      */
@@ -73,5 +73,5 @@ export declare class CopilotClient {
 /**
  * Create and initialize a Copilot client
  */
-export declare function createCopilotClient(config?: CopilotConfig): Promise<CopilotClient>;
+export declare function createCopilotClient(config: CopilotConfig): Promise<CopilotClient>;
 //# sourceMappingURL=client.d.ts.map

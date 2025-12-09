@@ -4,7 +4,6 @@
 import { randomUUID } from "crypto";
 import fs from "fs/promises";
 import path from "path";
-import os from "os";
 import { CopilotError, AuthenticationError, RateLimitError } from "./types.js";
 // ----------------------------------------------------------------------------
 // Constants
@@ -13,8 +12,6 @@ const COPILOT_VERSION = "0.26.7";
 const VSCODE_VERSION = "1.104.3";
 const API_VERSION = "2025-04-01";
 const BASE_URL = "https://api.githubcopilot.com";
-const DEFAULT_AUTH_DIR = path.join(os.homedir(), ".copilot-sdk");
-const DEFAULT_AUTH_FILE = "auth.json";
 // ----------------------------------------------------------------------------
 // Copilot Client
 // ----------------------------------------------------------------------------
@@ -22,9 +19,13 @@ export class CopilotClient {
     config;
     authData;
     modelsCache;
-    constructor(config = {}) {
+    constructor(config) {
+        if (!config.authFile) {
+            throw new AuthenticationError("authFile is required. Example:\n" +
+                "  createCopilotClient({ authFile: './auth.json' })");
+        }
         this.config = {
-            authFile: config.authFile ?? path.join(DEFAULT_AUTH_DIR, DEFAULT_AUTH_FILE),
+            authFile: config.authFile,
             refreshBuffer: config.refreshBuffer ?? 60,
         };
     }
@@ -338,7 +339,7 @@ export class CopilotClient {
 /**
  * Create and initialize a Copilot client
  */
-export async function createCopilotClient(config = {}) {
+export async function createCopilotClient(config) {
     const client = new CopilotClient(config);
     await client.init();
     return client;

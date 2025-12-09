@@ -3,24 +3,15 @@
 // Copilot SDK - Authentication Script
 // ============================================================================
 //
-// Run this script to authenticate with GitHub Copilot via device flow.
-// The token will be saved to ~/.copilot-sdk/auth.json
+// Authenticates with GitHub Copilot via device flow and outputs JSON to stdout.
 //
 // Usage:
-//   bun auth.ts
-//   # or
-//   ./auth.ts
+//   bunx github:nguyenvanduocit/copilot-sdk > auth.json
 //
 // ============================================================================
 
-import fs from "fs/promises";
-import path from "path";
-import os from "os";
-
 // VSCode's OAuth Client ID - required for Copilot API access
 const GITHUB_CLIENT_ID = "Iv1.b507a08c87ecfe98";
-const AUTH_DIR = path.join(os.homedir(), ".copilot-sdk");
-const AUTH_FILE = path.join(AUTH_DIR, "auth.json");
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -53,10 +44,11 @@ interface AuthData {
   user?: string;
 }
 
+const log = (msg: string) => console.error(msg);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function getDeviceCode(): Promise<DeviceCodeResponse> {
-  console.log("📱 Requesting device code...");
+  log("Requesting device code...");
 
   const res = await fetch("https://github.com/login/device/code", {
     method: "POST",
@@ -106,7 +98,7 @@ async function pollAccessToken(
     }
 
     if (data.error === "authorization_pending") {
-      process.stdout.write(".");
+      process.stderr.write(".");
       continue;
     }
 
@@ -126,7 +118,7 @@ async function pollAccessToken(
 }
 
 async function getCopilotToken(githubToken: string): Promise<CopilotTokenResponse> {
-  console.log("🔑 Getting Copilot token...");
+  log("Getting Copilot token...");
 
   const res = await fetch("https://api.github.com/copilot_internal/v2/token", {
     headers: {
@@ -170,46 +162,26 @@ async function getUser(githubToken: string): Promise<string> {
 }
 
 async function main() {
-  console.log("╔════════════════════════════════════════╗");
-  console.log("║     Copilot SDK - Authentication       ║");
-  console.log("╚════════════════════════════════════════╝\n");
+  log("Copilot SDK - Authentication\n");
 
   try {
-    // Step 1: Get device code
     const deviceCode = await getDeviceCode();
 
-    // Step 2: Prompt user
-    console.log("\n┌────────────────────────────────────────┐");
-    console.log("│  Open this URL in your browser:        │");
-    console.log("│                                        │");
-    console.log("│  👉 " + deviceCode.verification_uri.padEnd(32) + " │");
-    console.log("│                                        │");
-    console.log("│  Enter this code:                      │");
-    console.log("│                                        │");
-    console.log("│  🔢 " + deviceCode.user_code.padEnd(32) + " │");
-    console.log("│                                        │");
-    console.log("└────────────────────────────────────────┘\n");
+    log("\nOpen: " + deviceCode.verification_uri);
+    log("Code: " + deviceCode.user_code + "\n");
+    log("Waiting for authorization");
 
-    console.log("⏳ Waiting for authorization");
-    process.stdout.write("   ");
-
-    // Step 3: Poll for access token
     const githubToken = await pollAccessToken(
       deviceCode.device_code,
       deviceCode.interval
     );
-    console.log("\n\n✅ GitHub authorization successful!");
+    log("\n\nAuthorization successful!");
 
-    // Step 4: Get user info
     const user = await getUser(githubToken);
-    console.log("👤 Logged in as: " + user);
+    log("Logged in as: " + user);
 
-    // Step 5: Get Copilot token
     const copilotData = await getCopilotToken(githubToken);
-    console.log("✅ Copilot token obtained!");
-
-    // Step 6: Save to file
-    await fs.mkdir(AUTH_DIR, { recursive: true });
+    log("Copilot token obtained!\n");
 
     const authData: AuthData = {
       githubToken,
@@ -220,20 +192,12 @@ async function main() {
       user,
     };
 
-    await fs.writeFile(AUTH_FILE, JSON.stringify(authData, null, 2));
+    // Output JSON to stdout
+    console.log(JSON.stringify(authData, null, 2));
 
-    console.log("\n✅ Authentication saved to:");
-    console.log("   " + AUTH_FILE);
-
-    console.log("\n📊 Token info:");
-    console.log("   Expires: " + new Date(copilotData.expires_at * 1000).toLocaleString());
-    console.log("   Refresh in: " + copilotData.refresh_in + " seconds");
-
-    console.log("\n🎉 You can now use the Copilot SDK!");
-    console.log("   Example: bun example.ts\n");
   } catch (error) {
-    console.error("\n❌ Authentication failed!");
-    console.error("   " + (error instanceof Error ? error.message : error));
+    log("\nAuthentication failed!");
+    log(error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }

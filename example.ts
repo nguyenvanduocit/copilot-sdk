@@ -3,7 +3,7 @@
 // ============================================================================
 //
 // Prerequisites:
-//   1. Run: bun auth.ts
+//   1. Run: bunx github:nguyenvanduocit/copilot-sdk > auth.json
 //   2. Then: bun example.ts
 //
 // ============================================================================
@@ -13,11 +13,13 @@ import { createCopilotClient, AuthenticationError, RateLimitError } from "./src/
 async function main() {
   try {
     console.log("Initializing Copilot client...");
-    const client = await createCopilotClient();
+    const client = await createCopilotClient({
+      authFile: "./auth.json",
+    });
 
     // Get user info
     const user = client.getUser();
-    console.log("✓ Logged in as: " + user + "\n");
+    console.log("Logged in as: " + user + "\n");
 
     // List models
     console.log("Available models:");
@@ -63,17 +65,17 @@ async function main() {
     console.log("  Chat remaining: " + usage.quota_snapshots.chat.percent_remaining + "%");
     console.log("  Resets: " + usage.quota_reset_date);
 
-    console.log("\n✅ All tests passed!");
+    console.log("\nAll tests passed!");
   } catch (error) {
     if (error instanceof AuthenticationError) {
-      console.error("\n❌ Authentication failed!");
+      console.error("\nAuthentication failed!");
       console.error(error.message);
-      console.error("\nMake sure to run 'bun auth.ts' first.");
+      console.error("\nRun: bunx github:nguyenvanduocit/copilot-sdk > auth.json");
     } else if (error instanceof RateLimitError) {
-      console.error("\n❌ Rate limit exceeded!");
+      console.error("\nRate limit exceeded!");
       console.error("Retry after: " + error.retryAfter + " seconds");
     } else {
-      console.error("\n❌ Error:", error);
+      console.error("\nError:", error);
     }
     process.exit(1);
   }

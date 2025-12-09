@@ -7,8 +7,8 @@
 // ----------------------------------------------------------------------------
 
 export interface CopilotConfig {
-  /** Path to auth.json file (default: ~/.copilot-sdk/auth.json) */
-  authFile?: string;
+  /** Path to auth.json file */
+  authFile: string;
   /** Refresh token N seconds before expiry (default: 60) */
   refreshBuffer?: number;
 }
