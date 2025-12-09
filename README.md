@@ -10,14 +10,14 @@ TypeScript SDK for directly calling GitHub Copilot API.
 ## Installation
 
 ```bash
-# npm
-npm install copilot-sdk
-
 # bun
-bun add copilot-sdk
+bun add github:nguyenvanduocit/copilot-sdk
 
-# or install from GitHub
+# npm
 npm install github:nguyenvanduocit/copilot-sdk
+
+# pnpm
+pnpm add github:nguyenvanduocit/copilot-sdk
 ```
 
 ## Setup
