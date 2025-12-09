@@ -1,6 +1,6 @@
 {
   "name": "copilot-sdk",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "TypeScript SDK for directly calling GitHub Copilot API",
   "type": "module",
   "main": "dist/index.js",
