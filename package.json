@@ -7,14 +7,14 @@
   "types": "index.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nicepkg/copilot-sdk.git"
+    "url": "git+https://github.com/nguyenvanduocit/copilot-sdk.git"
   },
-  "homepage": "https://github.com/nicepkg/copilot-sdk#readme",
+  "homepage": "https://github.com/nguyenvanduocit/copilot-sdk#readme",
   "bugs": {
-    "url": "https://github.com/nicepkg/copilot-sdk/issues"
+    "url": "https://github.com/nguyenvanduocit/copilot-sdk/issues"
   },
   "license": "MIT",
-  "author": "nicepkg",
+  "author": "nguyenvanduocit",
   "keywords": [
     "github",
     "copilot",
