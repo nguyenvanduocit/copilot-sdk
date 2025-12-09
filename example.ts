@@ -8,7 +8,7 @@
 //
 // ============================================================================
 
-import { createCopilotClient, AuthenticationError, RateLimitError } from "./index";
+import { createCopilotClient, AuthenticationError, RateLimitError } from "./src/index";
 
 async function main() {
   try {

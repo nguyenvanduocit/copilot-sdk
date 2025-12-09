@@ -24,6 +24,9 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
+      - name: Build
+        run: bun run build
+
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
@@ -46,15 +49,17 @@ jobs:
           fi
 
           # Determine bump type from conventional commits
-          BUMP="patch"
+          BUMP="none"
           if echo "$COMMITS" | grep -qE "^feat(\(.+\))?!:|^fix(\(.+\))?!:|^refactor(\(.+\))?!:|BREAKING CHANGE"; then
             BUMP="major"
           elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
             BUMP="minor"
           elif echo "$COMMITS" | grep -qE "^fix(\(.+\))?:|^perf(\(.+\))?:"; then
             BUMP="patch"
-          else
-            echo "No conventional commits found, skipping release"
+          fi
+
+          if [ "$BUMP" = "none" ]; then
+            echo "No release-worthy commits (feat/fix/perf), skipping"
             exit 0
           fi
 
@@ -82,14 +87,14 @@ jobs:
           # Update package.json version
           sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
 
-          # Generate changelog for this release
-          CHANGELOG=""
+          # Generate changelog
+          CHANGELOG="## What's Changed\n\n"
 
           FEATS=$(echo "$COMMITS" | grep -E "^feat(\(.+\))?:" || true)
           if [ -n "$FEATS" ]; then
             CHANGELOG="${CHANGELOG}### Features\n"
             while IFS= read -r line; do
-              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line}\n"
             done <<< "$FEATS"
             CHANGELOG="${CHANGELOG}\n"
           fi
@@ -98,7 +103,7 @@ jobs:
           if [ -n "$FIXES" ]; then
             CHANGELOG="${CHANGELOG}### Bug Fixes\n"
             while IFS= read -r line; do
-              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line}\n"
             done <<< "$FIXES"
             CHANGELOG="${CHANGELOG}\n"
           fi
@@ -107,7 +112,7 @@ jobs:
           if [ -n "$PERFS" ]; then
             CHANGELOG="${CHANGELOG}### Performance\n"
             while IFS= read -r line; do
-              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line}\n"
             done <<< "$PERFS"
           fi
 

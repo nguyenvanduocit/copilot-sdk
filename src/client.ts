@@ -18,9 +18,9 @@ import type {
   EmbeddingRequest,
   EmbeddingResponse,
   CopilotUsage,
-} from "./types";
+} from "./types.js";
 
-import { CopilotError, AuthenticationError, RateLimitError } from "./types";
+import { CopilotError, AuthenticationError, RateLimitError } from "./types.js";
 
 // ----------------------------------------------------------------------------
 // Constants

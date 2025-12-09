@@ -5,22 +5,38 @@ TypeScript SDK for directly calling GitHub Copilot API.
 ## Requirements
 
 - GitHub account with **active Copilot subscription** (Individual, Business, or Enterprise)
-- Bun runtime
+- Node.js >= 18 or Bun
+
+## Installation
+
+```bash
+# npm
+npm install copilot-sdk
+
+# bun
+bun add copilot-sdk
+
+# or install from GitHub
+npm install github:nguyenvanduocit/copilot-sdk
+```
 
 ## Setup
 
-```bash
-# 1. Authenticate via device flow (one-time)
-bun auth.ts
+Before using the SDK, authenticate with GitHub:
 
-# 2. Test the SDK
-bun example.ts
+```bash
+# Clone and run auth script
+git clone https://github.com/nguyenvanduocit/copilot-sdk.git
+cd copilot-sdk
+bun auth.ts
 ```
+
+This saves credentials to `~/.copilot-sdk/auth.json`.
 
 ## Usage
 
 ```typescript
-import { createCopilotClient } from "./index";
+import { createCopilotClient } from "copilot-sdk";
 
 const client = await createCopilotClient();
 
@@ -90,7 +106,7 @@ const client = await createCopilotClient({
 ## Error Handling
 
 ```typescript
-import { AuthenticationError, RateLimitError, CopilotError } from "./index";
+import { AuthenticationError, RateLimitError, CopilotError } from "copilot-sdk";
 
 try {
   await client.prompt("Hello");
@@ -102,3 +118,7 @@ try {
   }
 }
 ```
+
+## License
+
+MIT

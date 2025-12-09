@@ -20,10 +20,10 @@
 // ============================================================================
 
 // Client
-export { CopilotClient, createCopilotClient } from "./client";
+export { CopilotClient, createCopilotClient } from "./client.js";
 
 // Types - Configuration
-export type { CopilotConfig } from "./types";
+export type { CopilotConfig } from "./types.js";
 
 // Types - Messages
 export type {
@@ -32,7 +32,7 @@ export type {
   MessageContent,
   TextContent,
   ImageContent,
-} from "./types";
+} from "./types.js";
 
 // Types - Tools
 export type {
@@ -40,7 +40,7 @@ export type {
   ToolCall,
   ToolChoice,
   FunctionDefinition,
-} from "./types";
+} from "./types.js";
 
 // Types - Chat
 export type {
@@ -51,38 +51,38 @@ export type {
   StreamChoice,
   StreamDelta,
   Usage,
-} from "./types";
+} from "./types.js";
 
 // Types - Models
 export type {
   Model,
   ModelsResponse,
   ModelCapabilities,
-} from "./types";
+} from "./types.js";
 
 // Types - Embeddings
 export type {
   EmbeddingRequest,
   EmbeddingResponse,
   Embedding,
-} from "./types";
+} from "./types.js";
 
 // Types - Usage
 export type {
   CopilotUsage,
   QuotaSnapshots,
   QuotaDetail,
-} from "./types";
+} from "./types.js";
 
 // Types - Auth
 export type {
   GitHubUser,
   CopilotTokenResponse,
-} from "./types";
+} from "./types.js";
 
 // Errors
 export {
   CopilotError,
   AuthenticationError,
   RateLimitError,
-} from "./types";
+} from "./types.js";
