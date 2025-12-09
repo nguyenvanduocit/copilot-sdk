@@ -24,6 +24,9 @@ jobs:
       - name: Type check
         run: bun run typecheck
 
+      - name: Build
+        run: bun run build
+
       - name: Setup Git
         run: |
           git config user.name "github-actions[bot]"
@@ -118,12 +121,18 @@ jobs:
           git commit -m "chore(release): ${NEW_TAG}" || true
           git push
 
-          # Create tag and release
+          # Create tag
           git tag -a "$NEW_TAG" -m "Release ${NEW_TAG}"
           git push origin "$NEW_TAG"
 
+          # Create tarball with built files
+          TARBALL="copilot-sdk-${NEW_VERSION}.tgz"
+          tar -czvf "$TARBALL" package.json README.md LICENSE src/ dist/ auth.ts
+
+          # Create release with tarball
           echo -e "$CHANGELOG" | gh release create "$NEW_TAG" \
             --title "Release ${NEW_TAG}" \
-            --notes-file -
+            --notes-file - \
+            "$TARBALL"
 
           echo "Released ${NEW_TAG}"
