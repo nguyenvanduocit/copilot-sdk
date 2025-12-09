@@ -7,27 +7,121 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
-        id: release
-        with:
-          release-type: node
-
       - uses: actions/checkout@v4
-        if: ${{ steps.release.outputs.release_created }}
+        with:
+          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
-        if: ${{ steps.release.outputs.release_created }}
 
       - name: Install dependencies
-        if: ${{ steps.release.outputs.release_created }}
         run: bun install
 
       - name: Type check
-        if: ${{ steps.release.outputs.release_created }}
         run: bun run typecheck
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get latest tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          # Get commits since last tag
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s" 2>/dev/null || git log --pretty=format:"%s")
+
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits since last tag"
+            exit 0
+          fi
+
+          # Determine bump type from conventional commits
+          BUMP="patch"
+          if echo "$COMMITS" | grep -qE "^feat(\(.+\))?!:|^fix(\(.+\))?!:|^refactor(\(.+\))?!:|BREAKING CHANGE"; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+            BUMP="minor"
+          elif echo "$COMMITS" | grep -qE "^fix(\(.+\))?:|^perf(\(.+\))?:"; then
+            BUMP="patch"
+          else
+            echo "No conventional commits found, skipping release"
+            exit 0
+          fi
+
+          echo "Bump type: $BUMP"
+
+          # Calculate new version
+          CURRENT="${LATEST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case $BUMP in
+            major) NEW_VERSION="$((MAJOR + 1)).0.0" ;;
+            minor) NEW_VERSION="${MAJOR}.$((MINOR + 1)).0" ;;
+            patch) NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))" ;;
+          esac
+
+          NEW_TAG="v${NEW_VERSION}"
+          echo "New version: $NEW_TAG"
+
+          # Check if tag already exists
+          if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+            echo "Tag $NEW_TAG already exists, skipping"
+            exit 0
+          fi
+
+          # Update package.json version
+          sed -i "s/\"version\": \".*\"/\"version\": \"${NEW_VERSION}\"/" package.json
+
+          # Generate changelog for this release
+          CHANGELOG=""
+
+          FEATS=$(echo "$COMMITS" | grep -E "^feat(\(.+\))?:" || true)
+          if [ -n "$FEATS" ]; then
+            CHANGELOG="${CHANGELOG}### Features\n"
+            while IFS= read -r line; do
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+            done <<< "$FEATS"
+            CHANGELOG="${CHANGELOG}\n"
+          fi
+
+          FIXES=$(echo "$COMMITS" | grep -E "^fix(\(.+\))?:" || true)
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="${CHANGELOG}### Bug Fixes\n"
+            while IFS= read -r line; do
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+            done <<< "$FIXES"
+            CHANGELOG="${CHANGELOG}\n"
+          fi
+
+          PERFS=$(echo "$COMMITS" | grep -E "^perf(\(.+\))?:" || true)
+          if [ -n "$PERFS" ]; then
+            CHANGELOG="${CHANGELOG}### Performance\n"
+            while IFS= read -r line; do
+              [ -n "$line" ] && CHANGELOG="${CHANGELOG}- ${line#*: }\n"
+            done <<< "$PERFS"
+          fi
+
+          # Commit version bump
+          git add package.json
+          git commit -m "chore(release): ${NEW_TAG}" || true
+          git push
+
+          # Create tag and release
+          git tag -a "$NEW_TAG" -m "Release ${NEW_TAG}"
+          git push origin "$NEW_TAG"
+
+          echo -e "$CHANGELOG" | gh release create "$NEW_TAG" \
+            --title "Release ${NEW_TAG}" \
+            --notes-file -
+
+          echo "Released ${NEW_TAG}"
