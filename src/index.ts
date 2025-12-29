@@ -23,7 +23,7 @@
 export { CopilotClient, createCopilotClient } from "./client.js";
 
 // Types - Configuration
-export type { CopilotConfig } from "./types.js";
+export type { CopilotConfig, RequestOptions } from "./types.js";
 
 // Types - Messages
 export type {

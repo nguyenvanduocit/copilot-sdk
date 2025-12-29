@@ -11,6 +11,17 @@ export interface CopilotConfig {
   authFile: string;
   /** Refresh token N seconds before expiry (default: 60) */
   refreshBuffer?: number;
+  /** Max retry attempts for failed requests (default: 2) */
+  maxRetries?: number;
+  /** Request timeout in milliseconds (default: 60000) */
+  timeout?: number;
+}
+
+export interface RequestOptions {
+  /** AbortSignal for cancelling requests */
+  signal?: AbortSignal;
+  /** Override timeout for this request (ms) */
+  timeout?: number;
 }
 
 export interface CopilotTokenResponse {

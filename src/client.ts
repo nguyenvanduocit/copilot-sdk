@@ -17,6 +17,7 @@ import type {
   EmbeddingRequest,
   EmbeddingResponse,
   CopilotUsage,
+  RequestOptions,
 } from "./types.js";
 
 import { CopilotError, AuthenticationError, RateLimitError } from "./types.js";
@@ -48,7 +49,12 @@ interface AuthData {
 // ----------------------------------------------------------------------------
 
 export class CopilotClient {
-  private config: { authFile: string; refreshBuffer: number };
+  private config: {
+    authFile: string;
+    refreshBuffer: number;
+    maxRetries: number;
+    timeout: number;
+  };
   private authData?: AuthData;
   private modelsCache?: ModelsResponse;
 
@@ -62,6 +68,8 @@ export class CopilotClient {
     this.config = {
       authFile: config.authFile,
       refreshBuffer: config.refreshBuffer ?? 60,
+      maxRetries: config.maxRetries ?? 2,
+      timeout: config.timeout ?? 60000,
     };
   }
 
@@ -86,17 +94,24 @@ export class CopilotClient {
   /**
    * Send a chat completion request (non-streaming)
    */
-  async chat(request: ChatRequest): Promise<ChatResponse> {
+  async chat(
+    request: ChatRequest,
+    options?: RequestOptions
+  ): Promise<ChatResponse> {
     await this.ensureToken();
 
     const payload = this.buildChatPayload(request);
     payload.stream = false;
 
-    const res = await fetch(BASE_URL + "/chat/completions", {
-      method: "POST",
-      headers: this.copilotHeaders(this.hasVision(request.messages)),
-      body: JSON.stringify(payload),
-    });
+    const res = await this.fetchWithRetry(
+      BASE_URL + "/chat/completions",
+      {
+        method: "POST",
+        headers: this.copilotHeaders(this.hasVision(request.messages)),
+        body: JSON.stringify(payload),
+      },
+      options
+    );
 
     if (!res.ok) {
       await this.handleError(res);
@@ -109,17 +124,24 @@ export class CopilotClient {
    * Send a chat completion request (streaming)
    * Returns an async generator that yields chunks
    */
-  async *chatStream(request: ChatRequest): AsyncGenerator<ChatChunk> {
+  async *chatStream(
+    request: ChatRequest,
+    options?: RequestOptions
+  ): AsyncGenerator<ChatChunk> {
     await this.ensureToken();
 
     const payload = this.buildChatPayload(request);
     payload.stream = true;
 
-    const res = await fetch(BASE_URL + "/chat/completions", {
-      method: "POST",
-      headers: this.copilotHeaders(this.hasVision(request.messages)),
-      body: JSON.stringify(payload),
-    });
+    const res = await this.fetchWithRetry(
+      BASE_URL + "/chat/completions",
+      {
+        method: "POST",
+        headers: this.copilotHeaders(this.hasVision(request.messages)),
+        body: JSON.stringify(payload),
+      },
+      options
+    );
 
     if (!res.ok) {
       await this.handleError(res);
@@ -134,6 +156,12 @@ export class CopilotClient {
     let buffer = "";
 
     while (true) {
+      // Check for abort during streaming
+      if (options?.signal?.aborted) {
+        reader.cancel();
+        throw new Error("Aborted");
+      }
+
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -161,13 +189,17 @@ export class CopilotClient {
    */
   async prompt(
     prompt: string,
-    options?: Partial<Omit<ChatRequest, "messages">>
+    options?: Partial<Omit<ChatRequest, "messages">> & RequestOptions
   ): Promise<string> {
-    const response = await this.chat({
-      model: options?.model ?? "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      ...options,
-    });
+    const { signal, timeout, ...chatOptions } = options ?? {};
+    const response = await this.chat(
+      {
+        model: chatOptions?.model ?? "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        ...chatOptions,
+      },
+      { signal, timeout }
+    );
 
     return response.choices[0]?.message.content ?? "";
   }
@@ -177,14 +209,18 @@ export class CopilotClient {
    */
   async *promptStream(
     prompt: string,
-    options?: Partial<Omit<ChatRequest, "messages">>
+    options?: Partial<Omit<ChatRequest, "messages">> & RequestOptions
   ): AsyncGenerator<string> {
-    const stream = this.chatStream({
-      model: options?.model ?? "gpt-4o",
-      messages: [{ role: "user", content: prompt }],
-      stream: true,
-      ...options,
-    });
+    const { signal, timeout, ...chatOptions } = options ?? {};
+    const stream = this.chatStream(
+      {
+        model: chatOptions?.model ?? "gpt-4o",
+        messages: [{ role: "user", content: prompt }],
+        stream: true,
+        ...chatOptions,
+      },
+      { signal, timeout }
+    );
 
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content;
@@ -195,16 +231,21 @@ export class CopilotClient {
   /**
    * Get available models
    */
-  async getModels(forceRefresh = false): Promise<Model[]> {
+  async getModels(
+    forceRefresh = false,
+    options?: RequestOptions
+  ): Promise<Model[]> {
     if (this.modelsCache && !forceRefresh) {
       return this.modelsCache.data;
     }
 
     await this.ensureToken();
 
-    const res = await fetch(BASE_URL + "/models", {
-      headers: this.copilotHeaders(),
-    });
+    const res = await this.fetchWithRetry(
+      BASE_URL + "/models",
+      { headers: this.copilotHeaders() },
+      options
+    );
 
     if (!res.ok) {
       await this.handleError(res);
@@ -225,14 +266,21 @@ export class CopilotClient {
   /**
    * Create embeddings
    */
-  async createEmbedding(request: EmbeddingRequest): Promise<EmbeddingResponse> {
+  async createEmbedding(
+    request: EmbeddingRequest,
+    options?: RequestOptions
+  ): Promise<EmbeddingResponse> {
     await this.ensureToken();
 
-    const res = await fetch(BASE_URL + "/embeddings", {
-      method: "POST",
-      headers: this.copilotHeaders(),
-      body: JSON.stringify(request),
-    });
+    const res = await this.fetchWithRetry(
+      BASE_URL + "/embeddings",
+      {
+        method: "POST",
+        headers: this.copilotHeaders(),
+        body: JSON.stringify(request),
+      },
+      options
+    );
 
     if (!res.ok) {
       await this.handleError(res);
@@ -244,14 +292,16 @@ export class CopilotClient {
   /**
    * Get current usage and quota information
    */
-  async getUsage(): Promise<CopilotUsage> {
+  async getUsage(options?: RequestOptions): Promise<CopilotUsage> {
     if (!this.authData) {
       throw new AuthenticationError("Not authenticated");
     }
 
-    const res = await fetch("https://api.github.com/copilot_internal/user", {
-      headers: this.githubHeaders(),
-    });
+    const res = await this.fetchWithRetry(
+      "https://api.github.com/copilot_internal/user",
+      { headers: this.githubHeaders() },
+      options
+    );
 
     if (!res.ok) {
       await this.handleError(res);
@@ -333,6 +383,87 @@ export class CopilotClient {
   // Private Methods
   // --------------------------------------------------------------------------
 
+  private async fetchWithRetry(
+    url: string,
+    init: RequestInit,
+    options?: RequestOptions
+  ): Promise<Response> {
+    const maxRetries = this.config.maxRetries;
+    const timeout = options?.timeout ?? this.config.timeout;
+
+    let lastError: Error | undefined;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+      // Link user signal to our controller
+      const userSignal = options?.signal;
+      const onAbort = () => controller.abort();
+      if (userSignal) {
+        userSignal.addEventListener("abort", onAbort);
+      }
+
+      try {
+        const res = await fetch(url, { ...init, signal: controller.signal });
+        clearTimeout(timeoutId);
+        userSignal?.removeEventListener("abort", onAbort);
+
+        if (res.ok || !this.shouldRetry(res.status)) {
+          return res;
+        }
+
+        // Retryable error - store for potential re-throw
+        const body = await res.text();
+        lastError = new CopilotError(`API error: ${res.status}`, res.status, body);
+
+        if (attempt < maxRetries) {
+          const delay = this.getRetryDelay(attempt, res);
+          await this.sleep(delay);
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        userSignal?.removeEventListener("abort", onAbort);
+
+        // User cancelled - don't retry
+        if (userSignal?.aborted) {
+          throw err;
+        }
+
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        if (attempt < maxRetries) {
+          const delay = this.getRetryDelay(attempt);
+          await this.sleep(delay);
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  private shouldRetry(status: number): boolean {
+    return status === 429 || (status >= 500 && status < 600);
+  }
+
+  private getRetryDelay(attempt: number, res?: Response): number {
+    // Respect Retry-After header
+    const retryAfter = res?.headers.get("retry-after");
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) return seconds * 1000;
+    }
+
+    // Exponential backoff with jitter
+    const baseDelay = 500;
+    const maxDelay = 30000;
+    const jitter = Math.random() * 500;
+    return Math.min(baseDelay * Math.pow(2, attempt) + jitter, maxDelay);
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
   private async loadAuth(): Promise<void> {
     try {
